@@ -107,7 +107,69 @@ models_results_df %>%
 
 * **Comment on the plot**: The above plot illustrates that for most cities the estimates for odds ratio are above 1.0. Such result indicates that more homicides are likely to be solved for white compared to non-whites. We can observe that this is more apparent in cities such as Boston, Omaha, Oakland, and Pittsburgh.
 
+## Problem 2
 
+```{r}
+birthweight = 
+  read_csv("./data/birthweight.csv") %>% 
+  janitor::clean_names() %>% 
+  mutate(babysex = as.factor(babysex),
+         frace = as.factor(frace),
+         malform = as.factor(malform),
+         mrace = as.factor(mrace),
+         babysex = recode(babysex, 
+                          "1" = "male", 
+                          "2" = "female"),
+         frace = recode(frace, 
+                        "1" = "white", 
+                        "2" = "black", 
+                        "3" = "asian", 
+                        "4" = "puerto rican", 
+                        "8" = "other"),
+         malform = recode(malform, 
+                          "0" = "absent", 
+                          "1" = "present"),
+         mrace = recode(mrace, 
+                        "1" = "white", 
+                        "2" = "black", 
+                        "3" = "asian", 
+                        "4" = "puerto rican"))
+
+birthweight %>% 
+  is.na() %>% 
+  summary()
+```
+
+* **Comment on the cleaned dataset**: As can be seen above, I have loaded and cleaned the initial data for regression analysis by converting numeric to factor where appropriate. Also I have checked for missing data and there seems to be none.
+
+```{r}
+initial_model = lm(bwt ~ ., data = birthweight)
+
+fitted_model = step(initial_model, direction = "backward")
+  
+fitted_model %>% summary()
+```
+
+* **Comment on the modeling process**: As can be seen above, I have performed a stepwise regression. The stepwise regression carry out adding and removing predictors, in the predictive model, in order to find the subset of variables in the data set that results the best performing model. As can be seen from the summary, the best performing model consists of 13 predictors.
+
+```{r}
+birthweight %>% 
+  add_predictions(., fitted_model) %>% 
+  add_residuals(., fitted_model) %>%
+  ggplot(aes(x = pred, y = resid)) +
+  geom_point(alpha = .3) +
+  labs(
+    title = "Plot of model residuals against fitted values",
+    x = "Fitted (Predicted) Values",
+    y = "Residuals",
+    caption = "Datasource: birthweight.csv",
+    color = "") +
+  theme(plot.title = element_text(face="bold",
+                                  hjust=0.5,
+                                  lineheight=1.2))
+```
+
+* **Comment on the plot**: As can be seen above, the values are heavily concentrated between 2500 and 3500 for fitted values and between -500 and 500 for residuals.
 
 
 
