@@ -171,9 +171,77 @@ birthweight %>%
 
 * **Comment on the plot**: As can be seen above, the values are heavily concentrated between 2500 and 3500 for fitted values and between -500 and 500 for residuals.
 
+```{r}
+# One using length at birth and gestational age as predictors (main effects only)
+comparison_model_1 = lm(bwt ~ blength + gaweeks, data = birthweight)
 
+summary(comparison_model_1)
 
+# One using head circumference, length, sex, and all interactions (including the three-way interaction)
+comparison_model_2 = lm(bwt ~ bhead + blength + babysex
+                        + bhead*blength + bhead*babysex + blength*babysex
+                        + bhead*blength*babysex, data = birthweight)
 
+summary(comparison_model_2)
+```
+
+```{r}
+birthweight_cv = 
+  crossv_mc(birthweight, 100) %>% 
+  mutate(
+    train = map(train, as_tibble),
+    test  = map(test, as_tibble))
+
+birthweight_cv = 
+  birthweight_cv %>% 
+  mutate(
+    best_fitted = map(train, ~lm(bwt ~ babysex + bhead + blength + delwt + fincome + gaweeks 
+                                       + mheight + mrace + parity + ppwt + smoken, data = .x)),
+    comparison_1 = map(train, ~lm(bwt ~ blength + gaweeks, data = .x)),
+    comparison_2 = map(train, ~lm(bwt ~ bhead + blength + babysex 
+                        + bhead*blength + bhead*babysex + blength*babysex 
+                        + bhead*blength*babysex, data = .x))) %>%
+  mutate(
+    rmse_best_fitted = map2_dbl(best_fitted, test, ~rmse(model = .x, data = .y)),
+    rmse_comparison_1 = map2_dbl(comparison_1, test, ~rmse(model = .x, data = .y)),
+    rmse_comparison_2 = map2_dbl(comparison_2, test, ~rmse(model = .x, data = .y))
+  )
+```
+
+```{r}
+birthweight_cv %>% 
+  select(starts_with("rmse")) %>% 
+  pivot_longer(
+    everything(),
+    names_to = "model",
+    values_to = "rmse",
+    names_prefix = "rmse_"
+  ) %>% 
+  mutate(model = recode(model, best_fitted = "Best Performing Model", 
+                        comparison_1 = "Main Effect Model",
+                        comparison_2 = "Three-way Interaction Model"),
+         model = fct_inorder(model)) %>% 
+  ggplot(aes(x = model, y = rmse, fill = model)) + 
+  geom_violin() +
+  stat_summary(fun.data = "mean_sdl",
+               fun.args = list(mult = 1), 
+               geom = "pointrange", 
+               color = "red") +
+  labs(
+    title = "RMSE comparison by each model",
+    x = "Model",
+    y = "RMSE",
+    caption = "Datasource: birthweight.csv",
+    fill = "") +
+  theme(plot.title = element_text(face="bold",
+                                  hjust=0.5,
+                                  lineheight=1.2)) +
+  theme(legend.position = "none")
+```
+
+* **Comment on the plot**: As can be seen above, from the violin plot, the model (Best Performing Model) that used stepwise regression seemed to have the lowest RMSE distribution compared to other two comparison models (Main Effect Model and Three-way Interaction Model). The plot illustrates that the prediction accuracy of the model takes into account the magnitude of complexity of the model.
+
+## Problem 3
 
 
 
